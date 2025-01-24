@@ -1,4 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 import glob from 'fast-glob';
 import fsPromises from 'fs/promises';
 import type { Class, DirectoryLoader, Types } from 'n8n-core';
@@ -28,7 +29,6 @@ import type {
 import { ApplicationError, NodeConnectionType } from 'n8n-workflow';
 import path from 'path';
 import picocolors from 'picocolors';
-import { Container, Service } from 'typedi';
 
 import {
 	CUSTOM_API_CALL_KEY,
@@ -323,7 +323,15 @@ export class LoadNodesAndCredentials {
 					name: `${packageName}.${name}`,
 				})),
 			);
-			this.types.credentials = this.types.credentials.concat(types.credentials);
+			this.types.credentials = this.types.credentials.concat(
+				types.credentials.map(({ supportedNodes, ...rest }) => ({
+					...rest,
+					supportedNodes:
+						loader instanceof PackageDirectoryLoader
+							? supportedNodes?.map((nodeName) => `${loader.packageName}.${nodeName}`)
+							: undefined,
+				})),
+			);
 
 			// Nodes and credentials that have been loaded immediately
 			for (const nodeTypeName in loader.nodeTypes) {

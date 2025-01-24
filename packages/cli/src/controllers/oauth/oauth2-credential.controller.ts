@@ -133,7 +133,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				set(oauthToken.data, 'callbackQueryString', omit(req.query, 'state', 'code'));
 			}
 
-			if (decryptedDataOriginal.oauthTokenData) {
+			if (typeof decryptedDataOriginal.oauthTokenData === 'object') {
 				// Only overwrite supplied data as some providers do for example just return the
 				// refresh_token on the very first request and not on subsequent ones.
 				Object.assign(decryptedDataOriginal.oauthTokenData, oauthToken.data);
@@ -149,7 +149,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				credentialId: credential.id,
 			});
 
-			return res.render('oauth-callback');
+			return res.render('oauth-callback', { imagePath: 'n8n-logo.png' });
 		} catch (error) {
 			return this.renderCallbackError(
 				res,

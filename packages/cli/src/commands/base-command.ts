@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { GlobalConfig } from '@n8n/config';
+import { Container } from '@n8n/di';
 import { Command, Errors } from '@oclif/core';
 import {
 	BinaryDataService,
@@ -10,7 +11,6 @@ import {
 	ErrorReporter,
 } from 'n8n-core';
 import { ApplicationError, ensureError, sleep } from 'n8n-workflow';
-import { Container } from 'typedi';
 
 import type { AbstractServer } from '@/abstract-server';
 import config from '@/config';
@@ -61,10 +61,15 @@ export abstract class BaseCommand extends Command {
 
 	async init(): Promise<void> {
 		this.errorReporter = Container.get(ErrorReporter);
-		await this.errorReporter.init(
-			this.instanceSettings.instanceType,
-			this.globalConfig.sentry.backendDsn,
-		);
+
+		const { backendDsn, n8nVersion, environment, deploymentName } = this.globalConfig.sentry;
+		await this.errorReporter.init({
+			serverType: this.instanceSettings.instanceType,
+			dsn: backendDsn,
+			environment,
+			release: n8nVersion,
+			serverName: deploymentName,
+		});
 		initExpressionEvaluator();
 
 		process.once('SIGTERM', this.onTerminationSignal('SIGTERM'));
@@ -184,42 +189,10 @@ export abstract class BaseCommand extends Command {
 	private async _initObjectStoreService(options = { isReadOnly: false }) {
 		const objectStoreService = Container.get(ObjectStoreService);
 
-		const { host, bucket, credentials } = this.globalConfig.externalStorage.s3;
-
-		if (host === '') {
-			throw new ApplicationError(
-				'External storage host not configured. Please set `N8N_EXTERNAL_STORAGE_S3_HOST`.',
-			);
-		}
-
-		if (bucket.name === '') {
-			throw new ApplicationError(
-				'External storage bucket name not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_NAME`.',
-			);
-		}
-
-		if (bucket.region === '') {
-			throw new ApplicationError(
-				'External storage bucket region not configured. Please set `N8N_EXTERNAL_STORAGE_S3_BUCKET_REGION`.',
-			);
-		}
-
-		if (credentials.accessKey === '') {
-			throw new ApplicationError(
-				'External storage access key not configured. Please set `N8N_EXTERNAL_STORAGE_S3_ACCESS_KEY`.',
-			);
-		}
-
-		if (credentials.accessSecret === '') {
-			throw new ApplicationError(
-				'External storage access secret not configured. Please set `N8N_EXTERNAL_STORAGE_S3_ACCESS_SECRET`.',
-			);
-		}
-
 		this.logger.debug('Initializing object store service');
 
 		try {
-			await objectStoreService.init(host, bucket, credentials);
+			await objectStoreService.init();
 			objectStoreService.setReadonly(options.isReadOnly);
 
 			this.logger.debug('Object store init completed');

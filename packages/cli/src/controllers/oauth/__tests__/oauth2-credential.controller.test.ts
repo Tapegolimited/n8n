@@ -1,12 +1,12 @@
+import { Container } from '@n8n/di';
 import Csrf from 'csrf';
 import { type Response } from 'express';
 import { mock } from 'jest-mock-extended';
 import { Cipher } from 'n8n-core';
 import { Logger } from 'n8n-core';
 import nock from 'nock';
-import Container from 'typedi';
 
-import { Time } from '@/constants';
+import { CREDENTIAL_BLANKING_VALUE, Time } from '@/constants';
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
 import { CredentialsHelper } from '@/credentials-helper';
 import type { CredentialsEntity } from '@/databases/entities/credentials-entity';
@@ -255,7 +255,87 @@ describe('OAuth2CredentialController', () => {
 					type: 'oAuth2Api',
 				}),
 			);
-			expect(res.render).toHaveBeenCalledWith('oauth-callback');
+			expect(res.render).toHaveBeenCalledWith('oauth-callback', { imagePath: 'n8n-logo.png' });
+		});
+
+		it('merges oauthTokenData if it already exists', async () => {
+			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({
+				csrfSecret,
+				oauthTokenData: { token: true },
+			});
+			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
+			nock('https://example.domain')
+				.post(
+					'/token',
+					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback',
+				)
+				.reply(200, { access_token: 'access-token', refresh_token: 'refresh-token' });
+			cipher.encrypt.mockReturnValue('encrypted');
+
+			await controller.handleCallback(req, res);
+
+			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.callback', [
+				expect.objectContaining({
+					clientId: 'test-client-id',
+					redirectUri: 'http://localhost:5678/rest/oauth2-credential/callback',
+				}),
+			]);
+			expect(cipher.encrypt).toHaveBeenCalledWith({
+				oauthTokenData: {
+					token: true,
+					access_token: 'access-token',
+					refresh_token: 'refresh-token',
+				},
+			});
+			expect(credentialsRepository.update).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({
+					data: 'encrypted',
+					id: '1',
+					name: 'Test Credential',
+					type: 'oAuth2Api',
+				}),
+			);
+			expect(res.render).toHaveBeenCalledWith('oauth-callback', { imagePath: 'n8n-logo.png' });
+		});
+
+		it('overwrites oauthTokenData if it is a string', async () => {
+			credentialsRepository.findOneBy.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({
+				csrfSecret,
+				oauthTokenData: CREDENTIAL_BLANKING_VALUE,
+			});
+			jest.spyOn(Csrf.prototype, 'verify').mockReturnValueOnce(true);
+			nock('https://example.domain')
+				.post(
+					'/token',
+					'code=code&grant_type=authorization_code&redirect_uri=http%3A%2F%2Flocalhost%3A5678%2Frest%2Foauth2-credential%2Fcallback',
+				)
+				.reply(200, { access_token: 'access-token', refresh_token: 'refresh-token' });
+			cipher.encrypt.mockReturnValue('encrypted');
+
+			await controller.handleCallback(req, res);
+
+			expect(externalHooks.run).toHaveBeenCalledWith('oauth2.callback', [
+				expect.objectContaining({
+					clientId: 'test-client-id',
+					redirectUri: 'http://localhost:5678/rest/oauth2-credential/callback',
+				}),
+			]);
+			expect(cipher.encrypt).toHaveBeenCalledWith({
+				oauthTokenData: { access_token: 'access-token', refresh_token: 'refresh-token' },
+			});
+			expect(credentialsRepository.update).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({
+					data: 'encrypted',
+					id: '1',
+					name: 'Test Credential',
+					type: 'oAuth2Api',
+				}),
+			);
+			expect(res.render).toHaveBeenCalledWith('oauth-callback', { imagePath: 'n8n-logo.png' });
 		});
 	});
 });

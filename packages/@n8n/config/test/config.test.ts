@@ -1,6 +1,6 @@
+import { Container } from '@n8n/di';
 import fs from 'fs';
 import { mock } from 'jest-mock-extended';
-import { Container } from 'typedi';
 
 import { GlobalConfig } from '../src/index';
 
@@ -138,6 +138,7 @@ describe('GlobalConfig', () => {
 		externalStorage: {
 			s3: {
 				host: '',
+				protocol: 'https',
 				bucket: {
 					name: '',
 					region: '',
@@ -229,13 +230,16 @@ describe('GlobalConfig', () => {
 			maxPayload: 1024 * 1024 * 1024,
 			port: 5679,
 			maxOldSpaceSize: '',
-			maxConcurrency: 5,
-			taskTimeout: 60,
+			maxConcurrency: 10,
+			taskTimeout: 300,
 			heartbeatInterval: 30,
 		},
 		sentry: {
 			backendDsn: '',
 			frontendDsn: '',
+			n8nVersion: '',
+			environment: '',
+			deploymentName: '',
 		},
 		logging: {
 			level: 'info',
@@ -291,6 +295,9 @@ describe('GlobalConfig', () => {
 		},
 		aiAssistant: {
 			baseUrl: '',
+		},
+		tags: {
+			disabled: false,
 		},
 	};
 

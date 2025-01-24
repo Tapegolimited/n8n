@@ -1,7 +1,7 @@
+import { Container } from '@n8n/di';
 import { response as Response } from 'express';
 import nock from 'nock';
 import { parse as parseQs } from 'querystring';
-import { Container } from 'typedi';
 
 import { OAuth2CredentialController } from '@/controllers/oauth/oauth2-credential.controller';
 import { CredentialsHelper } from '@/credentials-helper';
@@ -116,7 +116,7 @@ describe('OAuth2 API', () => {
 			.query({ code: 'auth_code', state })
 			.expect(200);
 
-		expect(renderSpy).toHaveBeenCalledWith('oauth-callback');
+		expect(renderSpy).toHaveBeenCalledWith('oauth-callback', { imagePath: 'n8n-logo.png' });
 
 		const updatedCredential = await Container.get(CredentialsHelper).getCredentials(
 			credential,

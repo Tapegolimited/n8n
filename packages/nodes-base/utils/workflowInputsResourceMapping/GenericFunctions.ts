@@ -66,7 +66,7 @@ function parseJsonExample(context: IWorkflowNodeContext): JSONSchema7 {
 }
 
 export function getFieldEntries(context: IWorkflowNodeContext): FieldValueOption[] {
-	const inputSource = context.getNodeParameter(INPUT_SOURCE, 0);
+	const inputSource = context.getNodeParameter(INPUT_SOURCE, 0, PASSTHROUGH);
 	let result: FieldValueOption[] | string = 'Internal Error: Invalid input source';
 	try {
 		if (inputSource === WORKFLOW_INPUTS) {
@@ -97,7 +97,7 @@ export function getFieldEntries(context: IWorkflowNodeContext): FieldValueOption
 export function getWorkflowInputValues(this: ISupplyDataFunctions): INodeExecutionData[] {
 	const inputData = this.getInputData();
 
-	return inputData.map((item, itemIndex) => {
+	return inputData.map(({ json, binary }, itemIndex) => {
 		const itemFieldValues = this.getNodeParameter(
 			'workflowInputs.value',
 			itemIndex,
@@ -106,13 +106,14 @@ export function getWorkflowInputValues(this: ISupplyDataFunctions): INodeExecuti
 
 		return {
 			json: {
-				...item.json,
+				...json,
 				...itemFieldValues,
 			},
 			index: itemIndex,
 			pairedItem: {
 				item: itemIndex,
 			},
+			binary,
 		};
 	});
 }
